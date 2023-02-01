@@ -31,7 +31,7 @@ labber <- ff %>% filter(year == 2021) %>%
                            electricity_from_renewables_t_wh = 'Renewables'),
            year = 2024)
 
-labber2 <- ren %>% filter(year  %in% c(2000, 2021)) %>% 
+labber2 <- ren %>% filter(year  %in% c(2010, 2021)) %>% 
     mutate(lab = recode(source, 
                            geo_biomass_other_t_wh = 'Other',
                            solar_generation_t_wh = 'Solar',
@@ -41,8 +41,8 @@ labber2 <- ren %>% filter(year  %in% c(2000, 2021)) %>%
 
 
 # 1.  total energy
-g1<-ggplot(ff %>% filter(year >= 2000), aes(year, energy, fill = source), col='white') +
-    geom_chicklet(width=1.1, alpha=0.7) +
+g1<-ggplot(ff %>% filter(year >= 2010), aes(year, energy, fill = source)) +
+    geom_chicklet(width=1.1, alpha=0.7,col='#ffffe5') +
     geom_line(aes(year, cumsum, col = source), size=1.5) +
     coord_flip() +
     labs(x = '', y = '') +
@@ -57,14 +57,14 @@ g1<-ggplot(ff %>% filter(year >= 2000), aes(year, energy, fill = source), col='w
           panel.grid.major.x = element_line(colour='grey'))
 
 # 2. renewable subset
-g2<-ggplot(ren %>% filter(year %in% c(2000,2021)), aes(year, energy, fill=fct_reorder(source, energy))) + 
-    geom_chicklet() +
+g2<-ggplot(ren %>% filter(year %in% c(2010,2021)), aes(year, energy, fill=fct_reorder(source, energy))) + 
+    geom_chicklet(col='#ffffe5') +
     coord_flip() +
     labs(x = '', y = '') +
     scale_colour_manual(values = cols) +
     scale_fill_manual(values = cols) +
     geom_text(data = labber2,size=3, aes(year,  label_ypos, label = lab), colour='white', fontface=2) +
-    scale_x_continuous(expand=c(0,0), breaks=seq(1985, 2020, by=5)) +
+    scale_x_reverse(expand=c(0,0)) +
     # scale_y_continuous(labels=scales::comma,
     #                    position = 'right',
     #                    breaks=labber2$label_ypos) +
@@ -78,13 +78,26 @@ subs2<-rbind(subs %>%
     filter(year==2017 & fuel != 'total'), ren_subs) %>% 
     dplyr::count(fuel, wt = billion_usd) 
 
-## FF = 732 Bn USD in 2020
-## FF = 518 Bn USD in 2017
-subs$billion_usd[subs$year==2017 & subs$fuel=='total'] 
- 
 g3<-waffle(subs2$n, size=.5, rows=5,
            colors = c(pal[1], pal[2],pal[3],pal[4], pal[10]),
-           legend_pos = 'none')
+           legend_pos = 'none') +
+    theme(rect=element_rect(fill='#ffffe5',
+                              color='#ffffe5'),
+            plot.background=element_rect(fill='#ffffe5'),
+            strip.background = element_rect(colour=NA, fill=NA),
+            panel.background=element_rect(fill='#ffffe5', color='#ffffe5'))
+
+g3$layers[[1]]$aes_params$colour <- '#ffffe5'
+
+# subsidies per energy generation
+fsubs<-sum(subs2$n[!subs2$fuel == 'renewable'])
+rsubs<-sum(subs2$n[subs2$fuel == 'renewable'])
+
+fenergy<-ff %>% filter(year==2017 & source =='electricity_from_fossil_fuels_t_wh') %>% pull(energy)
+renergy<-ff %>% filter(year==2017 & source =='electricity_from_renewables_t_wh') %>% pull(energy)
+
+fenergy/fsubs
+renergy/rsubs
 
 ## 4. multipan
 pdf(file = 'fig.pdf', height=6, width=10)
@@ -104,3 +117,27 @@ dev.off()
 #     ggthemes::scale_fill_tableau(name=NULL) +
 #     theme_ipsum_rc(grid="")
 #     # waffle::theme_enhance_waffle()
+
+
+
+## summary stats
+## FF = 732 Bn USD in 2020
+## FF = 518 Bn USD in 2017
+subs$billion_usd[subs$year==2017 & subs$fuel=='total'] 
+subs2
+ren %>% filter(year %in% c(2000,2021)) %>% 
+    group_by(year) %>% summarise(sum(energy))
+(7931 - 2864) / 2864 * 100
+
+ff %>% filter(year %in% c(2000,2021) & source == 'electricity_from_fossil_fuels_t_wh') %>% 
+    group_by(year) %>% summarise(sum(energy))
+(17189 - 9604) / 9604 * 100
+
+## renew as prop of total in 2021
+7856 / 27783 * 100
+
+## fossil as prop of total in 2021
+17189 / 27783 * 100
+
+## FF as prop of total subsidies
+518 / (518 + 128) * 100
